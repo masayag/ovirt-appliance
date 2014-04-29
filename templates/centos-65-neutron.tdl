@@ -1,0 +1,82 @@
+<template>
+ <name>centos65_x86_64</name>
+ <description>CentOS 6.5 x86_64 template</description>
+ <os>
+  <name>CentOS-6</name>
+  <version>5</version>
+  <arch>x86_64</arch>
+  <rootpw>123456</rootpw>
+  <!-- 
+  <install type='url'>
+    <url>http://repos.fedorapeople.org/repos/openstack/guest-images/centos-6.5-20140117.0.x86_64.qcow2</url> 
+  </install>
+  -->
+  <install type='iso'>
+    <iso>file:///home/imagefactory/images/CentOS-6.5-x86_64-bin-DVD1.iso</iso>
+  </install>
+ </os>
+ 
+ <!-- repositories>
+    <repository name='openstack-havana'>
+       <url>http://repos.fedorapeople.org/repos/openstack/openstack-havana/epel-6/</url>
+       <signed>false</signed>
+    </repository>
+ </repositories -->
+
+ <packages>
+   <package name='tcpdump.x86_64'/>
+   
+   <!-- Before trying to utilize imagefactory repositories, will reproduce steps manually
+   <package name='openstack-packstack'/>
+   <package name='python-backport'/>
+   -->
+ </packages>
+ 
+ <commands>
+
+   <command name='update'>
+yum -y update
+yum clean all
+   </command>
+   
+   <command name='install-openstack'>
+yum install -y http://rdo.fedorapeople.org/rdo-release.rpm
+yum install -y openstack-packstack
+yum update -y python-backports
+
+packstack --gen-answer-file=/root/packstack-answers.txt
+
+IP_ADDRESS=$(grep CONFIG_MYSQL_HOST /root/packstack-answers.txt | cut -d= -f2)
+sed -i "s/$IP_ADDRESS/127.0.0.1/g" /root/packstack-answers.txt
+
+sed -i 's/CONFIG_PROVISION_ALL_IN_ONE_OVS_BRIDGE=n/CONFIG_PROVISION_ALL_IN_ONE_OVS_BRIDGE=y/' /root/packstack-answers.txt
+sed -i 's/CONFIG_CINDER_INSTALL=y/CONFIG_CINDER_INSTALL=n/' /root/packstack-answers.txt
+sed -i 's/CONFIG_NOVA_INSTALL=y/CONFIG_NOVA_INSTALL=n/' /root/packstack-answers.txt
+sed -i 's/CONFIG_HORIZON_INSTALL=y/CONFIG_HORIZON_INSTALL=n/' /root/packstack-answers.txt
+sed -i 's/CONFIG_SWIFT_INSTALL=y/CONFIG_SWIFT_INSTALL=n/' /root/packstack-answers.txt
+sed -i 's/CONFIG_CEILOMETER_INSTALL=y/CONFIG_CEILOMETER_INSTALL=n/' /root/packstack-answers.txt
+sed -i 's/CONFIG_NAGIOS_INSTALL=y/CONFIG_NAGIOS_INSTALL=n/' /root/packstack-answers.txt
+
+sed -i 's/CONFIG_NEUTRON_OVS_TENANT_NETWORK_TYPE=local/CONFIG_NEUTRON_OVS_TENANT_NETWORK_TYPE=vlan/' /root/packstack-answers.txt
+sed -i 's/CONFIG_NEUTRON_OVS_VLAN_RANGES=/CONFIG_NEUTRON_OVS_VLAN_RANGES=vmnet:1024:2048/' /root/packstack-answers.txt
+sed -i 's/CONFIG_NEUTRON_OVS_BRIDGE_MAPPINGS=/CONFIG_NEUTRON_OVS_BRIDGE_MAPPINGS=vmnet:br-eth1/' /root/packstack-answers.txt
+sed -i 's/CONFIG_NEUTRON_OVS_BRIDGE_IFACES=/CONFIG_NEUTRON_OVS_BRIDGE_IFACES=br-eth1:eth1/' /root/packstack-answers.txt
+ 
+# ip tables - open incomine traffic
+
+ssh-keygen -f /root/.ssh/id_dsa -t dsa -q -N ""
+cat /root/.ssh/id_dsa.pub >> /root/.ssh/authorized_keys
+ 
+packstack --answer-file=/root/packstack-answers.txt
+   </command>
+
+   <command name='sealing'>
+sed -i '/^HWADDR/d' /etc/sysconfig/network-scripts/ifcfg-eth0
+echo -n > /etc/udev/rules.d/70-persistent-net.rules
+echo -n > /lib/udev/rules.d/75-persistent-net-generator.rules
+rm -rf /var/lib/dhclient/*
+   </command>
+
+ </commands>
+</template>
+
