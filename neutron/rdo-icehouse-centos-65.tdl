@@ -9,7 +9,7 @@
 
   <!-- Use URL for online ISO
   <install type='url'>
-    <url>http://mirrors-pa.sioru.com/centos/6.5/isos/x86_64/CentOS-6.5-x86_64-bin-DVD1.iso</url> 
+    <url>http://mirrors-pa.sioru.com/centos/6.5/isos/x86_64/CentOS-6.5-x86_64-bin-DVD1.iso</url>
   </install>
   -->
   <install type='iso'>
@@ -23,24 +23,23 @@
      <signed>no</signed>
    </repository>
  </repositories -->
- 
+
  <!-- packages>
    <package name='cloud-init'/>
    <package name='ovirt-guest-agent'/>
    <package name='tcpdump'/>
  </packages -->
- 
+
  <commands>
 
    <command name='update'>
 yum -y update
 yum clean all
    </command>
- 
+
    <command name='install-openstack'>
 yum install -y http://repos.fedorapeople.org/repos/openstack/openstack-havana/rdo-release-havana-8.noarch.rpm
-# commented not to obtain latest rdo release
-# yum install -y http://rdo.fedorapeople.org/rdo-release.rpm
+#yum install -y http://rdo.fedorapeople.org/rdo-release.rpm
 yum install -y openstack-packstack
 
 packstack --gen-answer-file=/root/packstack-answers.txt
@@ -60,16 +59,17 @@ sed -i 's/CONFIG_NEUTRON_OVS_TENANT_NETWORK_TYPE=local/CONFIG_NEUTRON_OVS_TENANT
 sed -i 's/CONFIG_NEUTRON_OVS_VLAN_RANGES=/CONFIG_NEUTRON_OVS_VLAN_RANGES=vmnet:1024:2048/' /root/packstack-answers.txt
 sed -i 's/CONFIG_NEUTRON_OVS_BRIDGE_MAPPINGS=/CONFIG_NEUTRON_OVS_BRIDGE_MAPPINGS=vmnet:br-eth1/' /root/packstack-answers.txt
 sed -i 's/CONFIG_NEUTRON_OVS_BRIDGE_IFACES=/CONFIG_NEUTRON_OVS_BRIDGE_IFACES=br-eth1:eth1/' /root/packstack-answers.txt
- 
+
 # ip tables - open incomine traffic
 
 ssh-keygen -f /root/.ssh/id_dsa -t dsa -q -N ""
 cat /root/.ssh/id_dsa.pub >> /root/.ssh/authorized_keys
- 
+
 packstack --answer-file=/root/packstack-answers.txt
 
-yum install -y cloud-init ovirt-guest-agent tcpdump 
+yum install -y cloud-init ovirt-guest-agent tcpdump
    </command>
 
  </commands>
 </template>
+
