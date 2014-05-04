@@ -38,8 +38,8 @@ yum clean all
    </command>
 
    <command name='install-openstack'>
-yum install -y http://repos.fedorapeople.org/repos/openstack/openstack-havana/rdo-release-havana-8.noarch.rpm
-#yum install -y http://rdo.fedorapeople.org/rdo-release.rpm
+yum install -y http://rdo.fedorapeople.org/rdo-release.rpm
+yum -y update
 yum install -y openstack-packstack
 
 packstack --gen-answer-file=/root/packstack-answers.txt
@@ -49,7 +49,10 @@ sed -i "s/$IP_ADDRESS/127.0.0.1/g" /root/packstack-answers.txt
 
 sed -i 's/CONFIG_PROVISION_ALL_IN_ONE_OVS_BRIDGE=n/CONFIG_PROVISION_ALL_IN_ONE_OVS_BRIDGE=y/' /root/packstack-answers.txt
 sed -i 's/CONFIG_CINDER_INSTALL=y/CONFIG_CINDER_INSTALL=n/' /root/packstack-answers.txt
-sed -i 's/CONFIG_NOVA_INSTALL=y/CONFIG_NOVA_INSTALL=n/' /root/packstack-answers.txt
+
+# Due to neutron dependency on nova-client
+#sed -i 's/CONFIG_NOVA_INSTALL=y/CONFIG_NOVA_INSTALL=n/' /root/packstack-answers.txt
+
 sed -i 's/CONFIG_HORIZON_INSTALL=y/CONFIG_HORIZON_INSTALL=n/' /root/packstack-answers.txt
 sed -i 's/CONFIG_SWIFT_INSTALL=y/CONFIG_SWIFT_INSTALL=n/' /root/packstack-answers.txt
 sed -i 's/CONFIG_CEILOMETER_INSTALL=y/CONFIG_CEILOMETER_INSTALL=n/' /root/packstack-answers.txt
@@ -70,6 +73,33 @@ packstack --answer-file=/root/packstack-answers.txt
 yum install -y cloud-init ovirt-guest-agent tcpdump
    </command>
 
+   <command name='disable-nova'>
+openstack-service stop openstack-nova
+chkconfig openstack-nova-api off
+chkconfig openstack-nova-cert off
+chkconfig openstack-nova-compute off
+chkconfig openstack-nova-conductor off
+chkconfig openstack-nova-consoleauth off
+chkconfig openstack-nova-novncproxy off
+chkconfig openstack-nova-scheduler off
+   </command>
+
+   <command name='iptables'>
+# Find line numbers of services to be changed
+AMQP_LN=$( iptables --line-numbers -n -L INPUT | grep amqp | awk '{ print $1 }' )
+NEUTRON_SERVER_LN=$( iptables --line-numbers -n -L INPUT | grep neutron_server | awk '{ print $1 }' )
+NEUTRON_DHCP_LN=$( iptables --line-numbers -n -L INPUT | grep neutron_dhcp | awk '{ print $1 }' )
+GLANCE_LN=$( iptables --line-numbers -n -L INPUT | grep glance | awk '{ print $1 }' )
+
+# Modify rules to allow any source address
+iptables -R INPUT ${AMQP_LN} -p tcp -m multiport --dports 5671,5672 -m comment --comment "001 amqp incoming amqp_127.0.0.1" -j ACCEPT
+iptables -R INPUT ${NEUTRON_SERVER_LN} -p tcp -m multiport --dports 9696 -m comment --comment "001 neutron server incoming neutron_server_127.0.0.1_127.0.0.1" -j ACCEPT
+iptables -R INPUT ${NEUTRON_DHCP_LN} -p tcp -m multiport --dports 67 -m comment --comment "001 neutron dhcp in incoming neutron_dhcp_in_127.0.0.1_127.0.0.1" -j ACCEPT
+iptables -R INPUT ${GLANCE_LN} -p tcp -m multiport --dports 9292 -m comment --comment "001 glance incoming glance_127.0.0.1" -j ACCEPT
+
+service iptables save
+   </command>
+   
  </commands>
 </template>
 
