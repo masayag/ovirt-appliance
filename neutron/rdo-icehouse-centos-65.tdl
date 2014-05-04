@@ -98,6 +98,8 @@ iptables -R INPUT ${NEUTRON_DHCP_LN} -p tcp -m multiport --dports 67 -m comment 
 iptables -R INPUT ${GLANCE_LN} -p tcp -m multiport --dports 9292 -m comment --comment "001 glance incoming glance_127.0.0.1" -j ACCEPT
 
 service iptables save
+iptables-save > /tmp/iptables.rules
+/bin/cp -f /tmp/iptables.rules /etc/sysconfig/iptables
    </command>
    
  </commands>
