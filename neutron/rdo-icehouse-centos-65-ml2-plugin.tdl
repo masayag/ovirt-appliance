@@ -79,16 +79,16 @@ disable_service_installation_by_packstack CONFIG_SWIFT_INSTALL
 disable_service_installation_by_packstack CONFIG_CEILOMETER_INSTALL
 disable_service_installation_by_packstack CONFIG_NAGIOS_INSTALL
 
-# ip tables - open incoming traffic
+# workaround for BZ1037635
+iptables-save > /etc/sysconfig/iptables
 
 ssh-keygen -f /root/.ssh/id_dsa -t dsa -q -N ""
 cat /root/.ssh/id_dsa.pub >> /root/.ssh/authorized_keys
 
-# workaround for BZ1037635
-iptables-save > /etc/sysconfig/iptables
-
 packstack --answer-file=$PACKSTACK_ANSWER_FILE
+   </command>
 
+   <command name='install-additional-packages'>
 yum install -y cloud-init ovirt-guest-agent tcpdump vim-enhanced
    </command>
 
@@ -103,7 +103,7 @@ chkconfig openstack-nova-novncproxy off
 chkconfig openstack-nova-scheduler off
    </command>
 
-   <command name='iptables'>
+   <command name='iptables-open-incoming-traffic'>
 # Find line numbers of services to be changed
 AMQP_LN=$( iptables --line-numbers -n -L INPUT | grep amqp | awk '{ print $1 }' )
 NEUTRON_SERVER_LN=$( iptables --line-numbers -n -L INPUT | grep neutron_server | awk '{ print $1 }' )
