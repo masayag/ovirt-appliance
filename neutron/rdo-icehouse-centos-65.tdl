@@ -42,35 +42,54 @@ yum install -y http://rdo.fedorapeople.org/rdo-release.rpm
 yum -y update
 yum install -y openstack-packstack
 
-packstack --gen-answer-file=/root/packstack-answers.txt
+PACKSTACK_ANSWER_FILE=/root/packstack-answers.txt
+packstack --gen-answer-file=$PACKSTACK_ANSWER_FILE
 
-IP_ADDRESS=$(grep CONFIG_MYSQL_HOST /root/packstack-answers.txt | cut -d= -f2)
-sed -i "s/$IP_ADDRESS/127.0.0.1/g" /root/packstack-answers.txt
+IP_ADDRESS=$(grep CONFIG_MYSQL_HOST $PACKSTACK_ANSWER_FILE | cut -d= -f2)
+sed -i "s/$IP_ADDRESS/127.0.0.1/g" $PACKSTACK_ANSWER_FILE
 
-sed -i 's/CONFIG_PROVISION_ALL_IN_ONE_OVS_BRIDGE=n/CONFIG_PROVISION_ALL_IN_ONE_OVS_BRIDGE=y/' /root/packstack-answers.txt
-sed -i 's/CONFIG_CINDER_INSTALL=y/CONFIG_CINDER_INSTALL=n/' /root/packstack-answers.txt
+set_packstack_configuration_value ()
+{
+    sed -i "s/^$1=.*$/$1=$2/" $PACKSTACK_ANSWER_FILE
+}
 
-# Due to neutron dependency on nova-client
-#sed -i 's/CONFIG_NOVA_INSTALL=y/CONFIG_NOVA_INSTALL=n/' /root/packstack-answers.txt
+disable_service_installation_by_packstack ()
+{
+    sed -i "s/^$1=.*$/$1=n/" $PACKSTACK_ANSWER_FILE
+}
 
-sed -i 's/CONFIG_HORIZON_INSTALL=y/CONFIG_HORIZON_INSTALL=n/' /root/packstack-answers.txt
-sed -i 's/CONFIG_SWIFT_INSTALL=y/CONFIG_SWIFT_INSTALL=n/' /root/packstack-answers.txt
-sed -i 's/CONFIG_CEILOMETER_INSTALL=y/CONFIG_CEILOMETER_INSTALL=n/' /root/packstack-answers.txt
-sed -i 's/CONFIG_NAGIOS_INSTALL=y/CONFIG_NAGIOS_INSTALL=n/' /root/packstack-answers.txt
+# Configure ML2 - OpenVswtich
+set_packstack_configuration_value CONFIG_NEUTRON_L2_PLUGIN ml2
+set_packstack_configuration_value CONFIG_NEUTRON_ML2_TYPE_DRIVERS local,flat,vlan
+set_packstack_configuration_value CONFIG_NEUTRON_ML2_TENANT_NETWORK_TYPES vlan
+set_packstack_configuration_value CONFIG_NEUTRON_ML2_VLAN_RANGES vmnet:1024:2048
+set_packstack_configuration_value CONFIG_NEUTRON_ML2_MECHANISM_DRIVERS openvswitch
+set_packstack_configuration_value CONFIG_NEUTRON_OVS_BRIDGE_MAPPINGS vmnet:br-eth1
+set_packstack_configuration_value CONFIG_NEUTRON_OVS_BRIDGE_IFACES br-eth1:eth1
+# set_packstack_configuration_value CONFIG_PROVISION_ALL_IN_ONE_OVS_BRIDGE y
 
-sed -i 's/CONFIG_NEUTRON_OVS_TENANT_NETWORK_TYPE=local/CONFIG_NEUTRON_OVS_TENANT_NETWORK_TYPE=vlan/' /root/packstack-answers.txt
-sed -i 's/CONFIG_NEUTRON_OVS_VLAN_RANGES=/CONFIG_NEUTRON_OVS_VLAN_RANGES=vmnet:1024:2048/' /root/packstack-answers.txt
-sed -i 's/CONFIG_NEUTRON_OVS_BRIDGE_MAPPINGS=/CONFIG_NEUTRON_OVS_BRIDGE_MAPPINGS=vmnet:br-eth1/' /root/packstack-answers.txt
-sed -i 's/CONFIG_NEUTRON_OVS_BRIDGE_IFACES=/CONFIG_NEUTRON_OVS_BRIDGE_IFACES=br-eth1:eth1/' /root/packstack-answers.txt
+# Due to neutron dependency on nova-client - nova is installed, should be uncomment when resolved
+# disable_service_installation_by_packstack CONFIG_NOVA_INSTALL
+# disable_service_installation_by_packstack CONFIG_GLANCE_INSTALL
 
-# ip tables - open incomine traffic
+# Disable unneeded services
+disable_service_installation_by_packstack CONFIG_CINDER_INSTALL
+disable_service_installation_by_packstack CONFIG_HORIZON_INSTALL
+disable_service_installation_by_packstack CONFIG_SWIFT_INSTALL
+disable_service_installation_by_packstack CONFIG_CEILOMETER_INSTALL
+disable_service_installation_by_packstack CONFIG_NAGIOS_INSTALL
+
+# ip tables - open incoming traffic
 
 ssh-keygen -f /root/.ssh/id_dsa -t dsa -q -N ""
 cat /root/.ssh/id_dsa.pub >> /root/.ssh/authorized_keys
 
-packstack --answer-file=/root/packstack-answers.txt
+# workaround for BZ1037635
+iptables-save > /etc/sysconfig/iptables
 
-yum install -y cloud-init ovirt-guest-agent tcpdump
+packstack --answer-file=$PACKSTACK_ANSWER_FILE
+
+yum install -y cloud-init ovirt-guest-agent tcpdump vim-enhanced
    </command>
 
    <command name='disable-nova'>
