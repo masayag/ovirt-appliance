@@ -10,10 +10,10 @@ The neutron appliance contains the following services:
 * Neutron DHCP Agent
 * Open vSwitch Agent
 * Open vSwitch
-* QPID (messaging) - to be replaced with RabbitMQ
+* RabbitMQ (message broker)
     
 #### Creating the image
-    imagefactory target_image --template neutron/rdo-icehouse-centos-65.tdl openstack-kvm
+    imagefactory target_image --template neutron/rdo-icehouse-centos-65-ovs_plugin-vlan.tdl openstack-kvm
 
 This will create a qcow2 image based on Centos-65 and includes RDO relesae IceHouse with the listed neutron services configured.
 
