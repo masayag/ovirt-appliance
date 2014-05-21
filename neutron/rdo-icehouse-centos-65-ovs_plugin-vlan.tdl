@@ -67,8 +67,9 @@ set_packstack_configuration_value CONFIG_NEUTRON_OVS_VLAN_RANGES vmnet:1024:2048
 # set_packstack_configuration_value CONFIG_PROVISION_ALL_IN_ONE_OVS_BRIDGE y
 
 # Due to neutron dependency on nova-client - nova is installed, should be uncomment when resolved
-# disable_service_installation_by_packstack CONFIG_NOVA_INSTALL
-# disable_service_installation_by_packstack CONFIG_GLANCE_INSTALL
+disable_service_installation_by_packstack CONFIG_NOVA_INSTALL
+disable_service_installation_by_packstack CONFIG_GLANCE_INSTALL
+disable_service_installation_by_packstack CONFIG_PROVISION_DEMO
 
 # Disable unneeded services
 disable_service_installation_by_packstack CONFIG_CINDER_INSTALL
