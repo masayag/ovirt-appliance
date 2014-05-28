@@ -24,12 +24,6 @@
    </repository>
  </repositories -->
 
- <!-- packages>
-   <package name='cloud-init'/>
-   <package name='ovirt-guest-agent'/>
-   <package name='tcpdump'/>
- </packages -->
-
  <commands>
 
    <command name='update'>
@@ -110,9 +104,11 @@ NEUTRON_DHCP_LN=$( iptables --line-numbers -n -L INPUT | grep neutron_dhcp | awk
 iptables -R INPUT ${AMQP_LN} -p tcp -m multiport --dports 5671,5672 -m comment --comment "001 amqp incoming amqp_127.0.0.1" -j ACCEPT
 iptables -R INPUT ${NEUTRON_SERVER_LN} -p tcp -m multiport --dports 9696 -m comment --comment "001 neutron server incoming neutron_server_127.0.0.1_127.0.0.1" -j ACCEPT
 iptables -R INPUT ${NEUTRON_DHCP_LN} -p tcp -m multiport --dports 67 -m comment --comment "001 neutron dhcp in incoming neutron_dhcp_in_127.0.0.1_127.0.0.1" -j ACCEPT
+iptables -A INPUT -p tcp --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A INPUT -j REJECT --reject-with icmp-host-prohibited
 
 iptables-save > /tmp/iptables.rules
-/bin/cp -f /tmp/iptables.rules /etc/sysconfig/iptables
+/bin/cp -f /tmp/iptables.rules /etc/sysconfig/iptables.ozbackup
    </command>
    
  </commands>

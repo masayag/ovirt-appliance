@@ -24,12 +24,6 @@
    </repository>
  </repositories -->
 
- <!-- packages>
-   <package name='cloud-init'/>
-   <package name='ovirt-guest-agent'/>
-   <package name='tcpdump'/>
- </packages -->
-
  <commands>
 
    <command name='update'>
@@ -58,7 +52,7 @@ disable_service_installation_by_packstack ()
     sed -i "s/^$1=.*$/$1=n/" $PACKSTACK_ANSWER_FILE
 }
 
-# Configure ML2 - OpenVswtich
+# Configure ML2 - OpenVswtich with vlans
 set_packstack_configuration_value CONFIG_NEUTRON_L2_PLUGIN ml2
 set_packstack_configuration_value CONFIG_NEUTRON_ML2_TYPE_DRIVERS local,flat,vlan
 set_packstack_configuration_value CONFIG_NEUTRON_ML2_TENANT_NETWORK_TYPES vlan
@@ -68,12 +62,11 @@ set_packstack_configuration_value CONFIG_NEUTRON_OVS_BRIDGE_MAPPINGS vmnet:br-et
 set_packstack_configuration_value CONFIG_NEUTRON_OVS_BRIDGE_IFACES br-eth1:eth1
 # set_packstack_configuration_value CONFIG_PROVISION_ALL_IN_ONE_OVS_BRIDGE y
 
-# Due to neutron dependency on nova-client - nova is installed, should be uncomment when resolved
-disable_service_installation_by_packstack CONFIG_NOVA_INSTALL
-disable_service_installation_by_packstack CONFIG_GLANCE_INSTALL
 disable_service_installation_by_packstack CONFIG_PROVISION_DEMO
 
 # Disable unneeded services
+disable_service_installation_by_packstack CONFIG_NOVA_INSTALL
+disable_service_installation_by_packstack CONFIG_GLANCE_INSTALL
 disable_service_installation_by_packstack CONFIG_CINDER_INSTALL
 disable_service_installation_by_packstack CONFIG_HORIZON_INSTALL
 disable_service_installation_by_packstack CONFIG_SWIFT_INSTALL
@@ -86,6 +79,16 @@ iptables-save > /etc/sysconfig/iptables
 ssh-keygen -f /root/.ssh/id_dsa -t dsa -q -N ""
 cat /root/.ssh/id_dsa.pub >> /root/.ssh/authorized_keys
 
+######### START HACK #########
+# The Due to neutron installation dependency on nova, the following hack is required.
+# Hack should be removed when patch https://review.openstack.org/#/c/94220/ is merged
+
+/bin/rm -f $(rpm -ql openstack-packstack | grep "neutron_350.py[co]")
+NETURON_350_PY=$(rpm -ql openstack-packstack | grep "neutron_350.py$")
+REPLACED_LINE='            manifest_data += getManifestTemplate("neutron_notifications.pp")'
+sed -i "/$REPLACED_LINE/c\            if config['CONFIG_NOVA_INSTALL'] == 'y':\n    $REPLACED_LINE" $NETURON_350_PY
+######### END HACK #########
+
 packstack --answer-file=$PACKSTACK_ANSWER_FILE
    </command>
 
@@ -93,35 +96,23 @@ packstack --answer-file=$PACKSTACK_ANSWER_FILE
 yum install -y cloud-init ovirt-guest-agent tcpdump vim-enhanced
    </command>
 
-   <command name='disable-nova'>
-openstack-service stop openstack-nova
-chkconfig openstack-nova-api off
-chkconfig openstack-nova-cert off
-chkconfig openstack-nova-compute off
-chkconfig openstack-nova-conductor off
-chkconfig openstack-nova-consoleauth off
-chkconfig openstack-nova-novncproxy off
-chkconfig openstack-nova-scheduler off
-   </command>
-
    <command name='iptables-open-incoming-traffic'>
 # Find line numbers of services to be changed
 AMQP_LN=$( iptables --line-numbers -n -L INPUT | grep amqp | awk '{ print $1 }' )
 NEUTRON_SERVER_LN=$( iptables --line-numbers -n -L INPUT | grep neutron_server | awk '{ print $1 }' )
 NEUTRON_DHCP_LN=$( iptables --line-numbers -n -L INPUT | grep neutron_dhcp | awk '{ print $1 }' )
-GLANCE_LN=$( iptables --line-numbers -n -L INPUT | grep glance | awk '{ print $1 }' )
 
 # Modify rules to allow any source address
 iptables -R INPUT ${AMQP_LN} -p tcp -m multiport --dports 5671,5672 -m comment --comment "001 amqp incoming amqp_127.0.0.1" -j ACCEPT
 iptables -R INPUT ${NEUTRON_SERVER_LN} -p tcp -m multiport --dports 9696 -m comment --comment "001 neutron server incoming neutron_server_127.0.0.1_127.0.0.1" -j ACCEPT
 iptables -R INPUT ${NEUTRON_DHCP_LN} -p tcp -m multiport --dports 67 -m comment --comment "001 neutron dhcp in incoming neutron_dhcp_in_127.0.0.1_127.0.0.1" -j ACCEPT
-iptables -R INPUT ${GLANCE_LN} -p tcp -m multiport --dports 9292 -m comment --comment "001 glance incoming glance_127.0.0.1" -j ACCEPT
+iptables -A INPUT -p tcp --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A INPUT -j REJECT --reject-with icmp-host-prohibited
 
-service iptables save
 iptables-save > /tmp/iptables.rules
-/bin/cp -f /tmp/iptables.rules /etc/sysconfig/iptables
+/bin/cp -f /tmp/iptables.rules /etc/sysconfig/iptables.ozbackup
    </command>
-   
+
  </commands>
 </template>
 
