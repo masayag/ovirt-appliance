@@ -107,10 +107,13 @@ iptables -R INPUT ${AMQP_LN} -p tcp -m multiport --dports 5671,5672 -m comment -
 iptables -R INPUT ${NEUTRON_SERVER_LN} -p tcp -m multiport --dports 9696 -m comment --comment "001 neutron server incoming neutron_server_127.0.0.1_127.0.0.1" -j ACCEPT
 iptables -R INPUT ${NEUTRON_DHCP_LN} -p tcp -m multiport --dports 67 -m comment --comment "001 neutron dhcp in incoming neutron_dhcp_in_127.0.0.1_127.0.0.1" -j ACCEPT
 iptables -A INPUT -p tcp --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A INPUT -s 127.0.0.1/32 -m state --state NEW,ESTABLISHED -j ACCEPT
 iptables -A INPUT -j REJECT --reject-with icmp-host-prohibited
 
 iptables-save > /tmp/iptables.rules
 /bin/cp -f /tmp/iptables.rules /etc/sysconfig/iptables.ozbackup
+
+passwd -l root
    </command>
 
  </commands>

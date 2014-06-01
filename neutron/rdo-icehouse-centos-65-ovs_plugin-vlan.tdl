@@ -109,6 +109,8 @@ iptables -A INPUT -j REJECT --reject-with icmp-host-prohibited
 
 iptables-save > /tmp/iptables.rules
 /bin/cp -f /tmp/iptables.rules /etc/sysconfig/iptables.ozbackup
+
+passwd -l root
    </command>
    
  </commands>
